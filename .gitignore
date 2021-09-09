@@ -1,0 +1,10 @@
+**/obj/
+**/.vs/
+**/bin/
+**/Library/
+**/Temp/
+**/Build/
+**/Logs/
+**/publish/
+build.bat
+*.user

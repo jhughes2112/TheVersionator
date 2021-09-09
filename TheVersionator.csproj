@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net5.0</TargetFramework>
+    <StartupObject>TheVersionator.Program</StartupObject>
+    <Company>Reachable Games</Company>
+    <Authors>Jason Hughes</Authors>
+    <Version>0.0.1</Version>
+    <Description>Idempotently returns the next semantic version number of a docker image by inspecting the registry where the image will ultimately be pushed.  Depends on Registry v2 API and uses Basic auth.</Description>
+    <Copyright>Project Page: https://github.com/jhughes2112/TheVersionator</Copyright>
+    <RepositoryUrl>https://github.com/jhughes2112/TheVersionator</RepositoryUrl>
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.8.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
+</Project>

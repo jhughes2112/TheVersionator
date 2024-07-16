@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "TheVersionator": {
+      "commandName": "Project",
+      "commandLineArgs": "-r https://dev.reachablegames.com/\r\n-i theversionator\r\n-c userpass.txt",
+      "workingDirectory": "D:\\Github\\TheVersionator\\bin\\Release\\net8.0"
+    }
+  }
+}

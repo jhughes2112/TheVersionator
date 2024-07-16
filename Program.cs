@@ -9,6 +9,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Text.Json;
+using System.IO;
 
 namespace TheVersionator
 {
@@ -19,11 +20,8 @@ namespace TheVersionator
 			[Option('r', "registry", Required = true, HelpText = "Full url to the docker registry, such as https://some.registry.com/")]
 			public string url { get; set; }
 
-			[Option('u', "user", Required = true, HelpText = "Username to login to registry with.")]
-			public string user { get; set; }
-
-			[Option('p', "password", Required = true, HelpText = "Password to login to registry with.")]
-			public string password { get; set; }
+			[Option('c', "config", Required = true, HelpText = "Path to a config file that is simply two lines long that define the user/pass to be used when connecting to the registry.  The first line is the username, the second line is the password.")]
+			public string config { get; set; }
 
 			[Option('i', "image", Required = true, HelpText = "Image that will be used to request for version tags.")]
 			public string image { get; set; }
@@ -54,10 +52,14 @@ namespace TheVersionator
 
 		static private void Do(Options o)
 		{
+			string[] configFile = File.ReadAllLines(o.config);
+			string username = configFile[0].Trim();
+			string password = configFile[1].Trim();
+
 			using (HttpClient c = new HttpClient())
 			{
 				Uri baseUri = new Uri(o.url);
-				string base64UserPass = Convert.ToBase64String(System.Text.ASCIIEncoding.ASCII.GetBytes($"{o.user}:{o.password}"));
+				string base64UserPass = Convert.ToBase64String(System.Text.ASCIIEncoding.ASCII.GetBytes($"{username}:{password}"));
 				c.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64UserPass);
 				Uri tagsUri = new Uri(baseUri, $"v2/{o.image}/tags/list");
 

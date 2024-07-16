@@ -16,9 +16,7 @@ Project Page: https://github.com/jhughes2112/TheVersionator
 
   -r, --registry    Required. Full url to the docker registry, such as https://some.registry.com/
 
-  -u, --user        Required. Username to login to registry with.
-
-  -p, --password    Required. Password to login to registry with.
+  -c, --config      Required. Path to a text file that contains exactly two lines in it.  Username on the first, password on the second.
 
   -i, --image       Required. Image that will be used to request for version tags.
 
@@ -40,15 +38,15 @@ What TheVersionator really does is reads all the existing tags and figures out w
 D:\> curl -u "jhughes:mypassword" https://some.registry.com/v2/edge/tags/list
 {"name":"myimage","tags":["1.0.0","latest"]}
 
-D:\> TheVersionator.exe -i myimage -u jhughes -p mypassword -r https://some.registry.com/
+D:\> TheVersionator.exe -i myimage -c userpass.txt -r https://some.registry.com/
 1.0.1
 
-D:\> TheVersionator.exe -i myimage -u jhughes -p mypassword -r https://some.registry.com/ --minor
+D:\> TheVersionator.exe -i myimage -c userpass.txt -r https://some.registry.com/ --minor
 1.1.0
 
-D:\> TheVersionator.exe -i myimage -u jhughes -p mypassword -r https://some.registry.com/ --major
+D:\> TheVersionator.exe -i myimage -c userpass.txt -r https://some.registry.com/ --major
 2.0.0
 
-D:\> TheVersionator.exe -i myimage -u jhughes -p mypassword -r https://some.registry.com/ --suffix jason
+D:\> TheVersionator.exe -i myimage -c userpass.txt -r https://some.registry.com/ --suffix jason
 0.0.1-jason
 ```

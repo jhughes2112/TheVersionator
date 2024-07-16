@@ -6,5 +6,5 @@
 **/Build/
 **/Logs/
 **/publish/
-build.bat
 *.user
+userpass.txt

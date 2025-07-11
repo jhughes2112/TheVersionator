@@ -2,7 +2,7 @@
   "profiles": {
     "TheVersionator": {
       "commandName": "Project",
-      "commandLineArgs": "-r https://dev.reachablegames.com/\r\n-i theversionator\r\n-c userpass.txt",
+      "commandLineArgs": "-r https://dev.reachablegames.com/\r\n-i theversionator\r\n-c userpass.txt\r\n--patch",
       "workingDirectory": "D:\\Github\\TheVersionator\\bin\\Release\\net8.0"
     }
   }

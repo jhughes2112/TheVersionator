@@ -34,6 +34,9 @@ namespace TheVersionator
 
 			[Option("major", Required = false, HelpText = "Bumps the major revision. (major.minor.patch-suffix)")]
 			public bool major { get; set; }
+
+			[Option("patch", Required = false, HelpText = "Bumps the patch revision. (major.minor.patch-suffix)")]
+			public bool patch { get; set; }
 		}
 
 		static int resultCode = 0;
@@ -137,7 +140,10 @@ namespace TheVersionator
 					minor++;
 					patch = 0;
 				}
-				else patch++;
+				else if (o.patch)
+				{
+					patch++;
+				}
 
 				string newTag = $"{major}.{minor}.{patch}" + (string.IsNullOrEmpty(o.suffix) ? "" : $"-{o.suffix}");
 				Console.WriteLine(newTag);

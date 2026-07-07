@@ -1,4 +1,4 @@
-﻿//-------------------
+//-------------------
 // TheVersionator
 // Reachable Games
 //-------------------
@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Threading.Tasks;
 using System.Text.Json;
 using System.IO;
 
@@ -26,7 +25,7 @@ namespace TheVersionator
 			[Option('i', "image", Required = true, HelpText = "Image that will be used to request for version tags.")]
 			public string image { get; set; }
 
-			[Option('s', "suffix", Required = false, HelpText = "If specified, tags are only considered if the suffix matches.  If not specified, tags with suffixes are ignored.  (minor.major.patch-suffix)")]
+			[Option('s', "suffix", Required = false, HelpText = "If specified, tags are only considered if the suffix matches.  If not specified, tags with suffixes are ignored.  (major.minor.patch-suffix)")]
 			public string suffix { get; set; }
 
 			[Option("minor", Required = false, HelpText = "Bumps the minor revision. (major.minor.patch-suffix)")]
@@ -42,7 +41,7 @@ namespace TheVersionator
 		static int resultCode = 0;
 		static int Main(string[] args)
 		{
-			Parser.Default.ParseArguments<Options>(args).WithParsed<Options>(Do);
+			Parser.Default.ParseArguments<Options>(args).WithParsed<Options>(Do).WithNotParsed(errors => resultCode = 2);
 			return resultCode;
 		}
 
@@ -55,44 +54,74 @@ namespace TheVersionator
 
 		static private void Do(Options o)
 		{
+			if (File.Exists(o.config)==false)
+			{
+				Console.Error.WriteLine($"Error: Config file not found: {o.config}");
+				resultCode = 1;
+				return;
+			}
 			string[] configFile = File.ReadAllLines(o.config);
+			if (configFile.Length<2)
+			{
+				Console.Error.WriteLine($"Error: Config file must contain two lines: username then password.  {o.config}");
+				resultCode = 1;
+				return;
+			}
 			string username = configFile[0].Trim();
 			string password = configFile[1].Trim();
 
 			using (HttpClient c = new HttpClient())
 			{
-				Uri baseUri = new Uri(o.url);
-				string base64UserPass = Convert.ToBase64String(System.Text.ASCIIEncoding.ASCII.GetBytes($"{username}:{password}"));
+				c.Timeout = TimeSpan.FromSeconds(15);
+				Uri baseUri = new Uri(o.url.TrimEnd('/') + "/");  // registries without a trailing slash would otherwise lose their last path segment when combined below
+				string base64UserPass = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{username}:{password}"));
 				c.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64UserPass);
-				Uri tagsUri = new Uri(baseUri, $"v2/{o.image}/tags/list");
 
-				Task<HttpResponseMessage> response = c.GetAsync(tagsUri, HttpCompletionOption.ResponseContentRead);
-				response.Wait(15000);  // 15 seconds timeout is pretty long
-
-				if (!response.IsCompletedSuccessfully)
+				// Fetch ALL the tags.  Some registries paginate this endpoint (sorted lexically, not by version),
+				// so we must follow the Link headers or risk missing the highest version and re-issuing an old one.
+				List<string> allTags = new List<string>();
+				Uri tagsUri = new Uri(baseUri, $"v2/{o.image}/tags/list?n=1000");
+				while (tagsUri!=null)
 				{
-					Console.WriteLine("Error: Connection failure");
-					resultCode = 1;
-					return;
-				}
+					HttpResponseMessage response;
+					try
+					{
+						response = c.GetAsync(tagsUri, HttpCompletionOption.ResponseContentRead).GetAwaiter().GetResult();
+					}
+					catch (Exception e)
+					{
+						Console.Error.WriteLine($"Error: Connection failure. {e.Message}");
+						resultCode = 1;
+						return;
+					}
 
-				string msg = response.Result.Content.ReadAsStringAsync().Result;
-				ImageRegistry ir = JsonSerializer.Deserialize<ImageRegistry>(msg);  // returns null if there was no image pushed there yet
+					if (response.IsSuccessStatusCode==false)
+					{
+						Console.Error.WriteLine($"Error: Registry returned {(int)response.StatusCode} {response.ReasonPhrase} for {tagsUri}");
+						resultCode = 1;
+						return;
+					}
+
+					string msg = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+					ImageRegistry ir = JsonSerializer.Deserialize<ImageRegistry>(msg);  // returns null if there was no image pushed there yet
+					if (ir?.tags != null)
+					{
+						allTags.AddRange(ir.tags);
+					}
+					tagsUri = GetNextPageUri(baseUri, response);
+				}
 
 				// Filter down to only matching tags
 				List<string> matchingTags = new List<string>();
-				if (ir.tags!=null)
+				foreach (string t in allTags)
 				{
-					foreach (string t in ir.tags)
+					if (string.IsNullOrEmpty(o.suffix) && t.Contains('-')==false)  // no suffix supplied means ignore any tags with a suffix
 					{
-						if (string.IsNullOrEmpty(o.suffix) && t.Contains('-')==false)  // no suffix supplied means ignore any tags with a suffix
-						{
-							matchingTags.Add(t);
-						}
-						else if (string.IsNullOrEmpty(o.suffix)==false && t.EndsWith($"-{o.suffix}"))  // suffix supplied requires the suffix in the tags
-						{
-							matchingTags.Add(t);
-						}
+						matchingTags.Add(t);
+					}
+					else if (string.IsNullOrEmpty(o.suffix)==false && t.EndsWith($"-{o.suffix}"))  // suffix supplied requires the suffix in the tags
+					{
+						matchingTags.Add(t);
 					}
 				}
 
@@ -129,7 +158,7 @@ namespace TheVersionator
 				}
 
 				// bump the version as directed
-				if (o.major) 
+				if (o.major)
 				{
 					major++;
 					minor = 0;
@@ -148,6 +177,27 @@ namespace TheVersionator
 				string newTag = $"{major}.{minor}.{patch}" + (string.IsNullOrEmpty(o.suffix) ? "" : $"-{o.suffix}");
 				Console.WriteLine(newTag);
 			}
+		}
+
+		// Registry v2 pagination: Link: </v2/name/tags/list?last=xyz&n=1000>; rel="next"
+		static private Uri GetNextPageUri(Uri baseUri, HttpResponseMessage response)
+		{
+			if (response.Headers.TryGetValues("Link", out IEnumerable<string> links))
+			{
+				foreach (string link in links)
+				{
+					if (link.Contains("rel=\"next\""))
+					{
+						int start = link.IndexOf('<');
+						int end = link.IndexOf('>');
+						if (start>=0 && end>start+1)
+						{
+							return new Uri(baseUri, link.Substring(start+1, end-start-1));
+						}
+					}
+				}
+			}
+			return null;
 		}
 	}
 }

@@ -9,7 +9,7 @@ The right answer, usually, is to use git tags.  It's a good way to shove metadat
 Clearly a race condition exists when trying to do multiple builds of the same branch/suffix simultaneously before the first build completes.  I'm not attempting to solve that.  If you're really motivated, you could quickly push a tagged 1-byte image just to bump the version number, but it's not a problem I care about.
 
 ## Building
-If you grab the project and open the .sln, hit Build -> Publish and it will compile to a self-contained .exe in the bin\Release\net5.0\publish folder.  Throw that into your path and you now have a way to generate the next version tag for your docker image based on whatever tags are already pushed to your Docker Container Registry v2.
+If you grab the project and open the .sln, hit Build -> Publish and it will compile to a self-contained .exe in the bin\Release\net10.0\publish folder.  Throw that into your path and you now have a way to generate the next version tag for your docker image based on whatever tags are already pushed to your Docker Container Registry v2.
 ```
 TheVersionator 0.0.1
 Project Page: https://github.com/jhughes2112/TheVersionator
@@ -21,11 +21,13 @@ Project Page: https://github.com/jhughes2112/TheVersionator
   -i, --image       Required. Image that will be used to request for version tags.
 
   -s, --suffix      If specified, tags are only considered if the suffix matches.  If not specified, tags with suffixes are ignored.
-                    (minor.major.patch-suffix)
+                    (major.minor.patch-suffix)
 
   --minor           Bumps the minor revision. (major.minor.patch-suffix)
 
   --major           Bumps the major revision. (major.minor.patch-suffix)
+
+  --patch           Bumps the patch revision. (major.minor.patch-suffix)
 
   --help            Display this help screen.
 

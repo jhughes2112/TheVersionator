@@ -2,15 +2,14 @@
 // TheVersionator
 // Reachable Games
 //-------------------
-using CommandLine;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.IO;
-using System.Diagnostics.CodeAnalysis;
 
 namespace TheVersionator
 {
@@ -18,34 +17,100 @@ namespace TheVersionator
 	{
 		public class Options
 		{
-			[Option('r', "registry", Required = true, HelpText = "Full url to the docker registry, such as https://some.registry.com/")]
-			public string url { get; set; }
-
-			[Option('c', "config", Required = true, HelpText = "Path to a config file that is simply two lines long that define the user/pass to be used when connecting to the registry.  The first line is the username, the second line is the password.")]
-			public string config { get; set; }
-
-			[Option('i', "image", Required = true, HelpText = "Image that will be used to request for version tags.")]
-			public string image { get; set; }
-
-			[Option('s', "suffix", Required = false, HelpText = "If specified, tags are only considered if the suffix matches.  If not specified, tags with suffixes are ignored.  (major.minor.patch-suffix)")]
-			public string suffix { get; set; }
-
-			[Option("minor", Required = false, HelpText = "Bumps the minor revision. (major.minor.patch-suffix)")]
-			public bool minor { get; set; }
-
-			[Option("major", Required = false, HelpText = "Bumps the major revision. (major.minor.patch-suffix)")]
-			public bool major { get; set; }
-
-			[Option("patch", Required = false, HelpText = "Bumps the patch revision. (major.minor.patch-suffix)")]
-			public bool patch { get; set; }
+			public string url;
+			public string config;
+			public string image;
+			public string suffix;
+			public bool   minor;
+			public bool   major;
+			public bool   patch;
 		}
 
 		static int resultCode = 0;
-		[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Options))]  // CommandLineParser fills Options via reflection, keep it intact under AOT trimming
 		static int Main(string[] args)
 		{
-			Parser.Default.ParseArguments<Options>(args).WithParsed<Options>(Do).WithNotParsed(errors => resultCode = 2);
+			Options o = ParseArguments(args);
+			if (o!=null)
+			{
+				Do(o);
+			}
 			return resultCode;
+		}
+
+		// Tiny hand-rolled parser so we don't drag a reflection-based library into the AOT build.
+		static private Options ParseArguments(string[] args)
+		{
+			Options o = new Options();
+			for (int i=0; i<args.Length; i++)
+			{
+				switch (args[i])
+				{
+					case "-r": case "--registry": o.url    = TakeValue(args, ref i); break;
+					case "-c": case "--config":   o.config = TakeValue(args, ref i); break;
+					case "-i": case "--image":    o.image  = TakeValue(args, ref i); break;
+					case "-s": case "--suffix":   o.suffix = TakeValue(args, ref i); break;
+					case "--minor": o.minor = true; break;
+					case "--major": o.major = true; break;
+					case "--patch": o.patch = true; break;
+					case "--help":
+						PrintHelp();
+						return null;
+					case "--version":
+						Console.WriteLine(GetVersion());
+						return null;
+					default:
+						Console.Error.WriteLine($"Error: Unknown argument: {args[i]}");
+						resultCode = 2;
+						return null;
+				}
+				if (resultCode!=0)  // TakeValue already reported a missing value
+				{
+					return null;
+				}
+			}
+			if (string.IsNullOrEmpty(o.url) || string.IsNullOrEmpty(o.config) || string.IsNullOrEmpty(o.image))
+			{
+				Console.Error.WriteLine("Error: -r/--registry, -c/--config, and -i/--image are all required.  Run with --help for details.");
+				resultCode = 2;
+				return null;
+			}
+			return o;
+		}
+
+		static private string TakeValue(string[] args, ref int i)
+		{
+			if (i+1>=args.Length)
+			{
+				Console.Error.WriteLine($"Error: Missing value after {args[i]}");
+				resultCode = 2;
+				return null;
+			}
+			i++;
+			return args[i];
+		}
+
+		static private string GetVersion()
+		{
+			return typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
+		}
+
+		static private void PrintHelp()
+		{
+			Console.WriteLine($"TheVersionator {GetVersion()}");
+			Console.WriteLine("Project Page: https://github.com/jhughes2112/TheVersionator");
+			Console.WriteLine();
+			Console.WriteLine("  -r, --registry    Required. Full url to the docker registry, such as https://some.registry.com/");
+			Console.WriteLine("  -c, --config      Required. Path to a config file that is simply two lines long that define the");
+			Console.WriteLine("                    user/pass to be used when connecting to the registry.  The first line is the");
+			Console.WriteLine("                    username, the second line is the password.");
+			Console.WriteLine("  -i, --image       Required. Image that will be used to request for version tags.");
+			Console.WriteLine("  -s, --suffix      If specified, tags are only considered if the suffix matches.  If not specified,");
+			Console.WriteLine("                    tags with suffixes are ignored.  (major.minor.patch-suffix)");
+			Console.WriteLine("  --minor           Bumps the minor revision. (major.minor.patch-suffix)");
+			Console.WriteLine("  --major           Bumps the major revision. (major.minor.patch-suffix)");
+			Console.WriteLine("  --patch           Bumps the patch revision. (major.minor.patch-suffix)");
+			Console.WriteLine("  --help            Display this help screen.");
+			Console.WriteLine("  --version         Display version information.");
 		}
 
 		// We deserialize from the docker registry into this structure.

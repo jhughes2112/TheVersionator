@@ -26,13 +26,4 @@
     <Folder Include="Properties\" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="CommandLineParser" Version="2.9.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- CommandLineParser discovers options via reflection, so keep the whole assembly when trimming for AOT. -->
-    <TrimmerRootAssembly Include="CommandLine" />
-  </ItemGroup>
-
 </Project>

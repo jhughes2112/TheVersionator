@@ -4,6 +4,7 @@
 **/Library/
 **/Temp/
 **/Build/
+/build/
 **/Logs/
 **/publish/
 *.user

@@ -11,6 +11,11 @@
     <Copyright>Project Page: https://github.com/jhughes2112/TheVersionator</Copyright>
     <RepositoryUrl>https://github.com/jhughes2112/TheVersionator</RepositoryUrl>
     <SignAssembly>false</SignAssembly>
+    <PublishAot>true</PublishAot>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <StackTraceSupport>false</StackTraceSupport>
+    <StripSymbols>true</StripSymbols>
+    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -23,6 +28,11 @@
 
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- CommandLineParser discovers options via reflection, so keep the whole assembly when trimming for AOT. -->
+    <TrimmerRootAssembly Include="CommandLine" />
   </ItemGroup>
 
 </Project>

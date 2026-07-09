@@ -8,7 +8,9 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.IO;
+using System.Diagnostics.CodeAnalysis;
 
 namespace TheVersionator
 {
@@ -39,6 +41,7 @@ namespace TheVersionator
 		}
 
 		static int resultCode = 0;
+		[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Options))]  // CommandLineParser fills Options via reflection, keep it intact under AOT trimming
 		static int Main(string[] args)
 		{
 			Parser.Default.ParseArguments<Options>(args).WithParsed<Options>(Do).WithNotParsed(errors => resultCode = 2);
@@ -103,7 +106,7 @@ namespace TheVersionator
 					}
 
 					string msg = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-					ImageRegistry ir = JsonSerializer.Deserialize<ImageRegistry>(msg);  // returns null if there was no image pushed there yet
+					ImageRegistry ir = JsonSerializer.Deserialize(msg, SerializationContext.Default.ImageRegistry);  // returns null if there was no image pushed there yet
 					if (ir?.tags != null)
 					{
 						allTags.AddRange(ir.tags);
@@ -199,5 +202,11 @@ namespace TheVersionator
 			}
 			return null;
 		}
+	}
+
+	// Compile-time JSON serialization so no reflection is needed under AOT.
+	[JsonSerializable(typeof(Program.ImageRegistry))]
+	internal partial class SerializationContext : JsonSerializerContext
+	{
 	}
 }
